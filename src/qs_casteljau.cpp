@@ -8,28 +8,61 @@ std::vector<qtrn> _select_segment_and_normalize_t(
     double* difftime) {
   const std::size_t idx = _check_time(t, keyTimes, false);
   const double t0 = keyTimes[idx];
-  const double t1 = keyTimes[idx+1];
+  const double t1 = keyTimes[idx + 1];
   const double delta_t = t1 - t0;
   *difftime = delta_t;
   *time = (t - t0) / delta_t;
   return segments[idx];
 }
 
-qtrn getQuaternion(Rcpp::NumericVector qR){
-  qtrn q(qR(0), qR(1), qR(2), qR(3));
-  return q;
+qtrn _getRQuaternion(Rcpp::NumericVector qR) {
+  qtrn quat(qR(0), qR(1), qR(2), qR(3));
+  return quat;
 }
 
-std::vector<qtrn> _reduce_de_casteljau(std::vector<qtrn> segment, double t){
+std::vector<qtrn> _getRQuaternions(Rcpp::NumericMatrix Q) {
+  std::size_t n = Q.ncol();
+  std::vector<qtrn> quats(n);
+  for(std::size_t j = 0; j < n; j++) {
+    quats[j] = _getRQuaternion(Q(Rcpp::_, j));
+  }
+  return quats;
+}
+
+std::vector<std::vector<qtrn>> _getRSegments(Rcpp::List rsegments) {
+  std::size_t nsegments = rsegments.size();
+  std::vector<std::vector<qtrn>> segments(nsegments);
+  for(std::size_t i = 0; i < nsegments; i++) {
+    Rcpp::NumericMatrix segment = Rcpp::as<Rcpp::NumericMatrix>(rsegments(i));
+    segments[i] = _getRQuaternions(segment);
+  }
+  return segments;
+}
+
+Rcpp::NumericVector _getCQuaternion(qtrn quat) { 
+  return Rcpp::NumericVector::create(quat.w(), quat.x(), quat.y(), quat.z());
+} 
+
+Rcpp::NumericMatrix _getCQuaternions(std::vector<qtrn> quats) { 
+  std::size_t n = quats.size();
+  Rcpp::NumericMatrix Q(4, n);
+  for(std::size_t j = 0; j < n; j++) {
+    Rcpp::NumericVector qR = _getCQuaternion(quats[j]);
+    Q(Rcpp::_, j) = qR;
+  }
+  return Q;
+} 
+
+std::vector<qtrn> _reduce_de_casteljau(std::vector<qtrn> segment, double t) {
   size_t l = segment.size();
-  if(l < 2){
+  if(l < 2) {
     Rcpp::stop("Segment must have at least two quaternions.");
   }
-  while(l > 2){
+  while(l > 2) {
     std::vector<qtrn> newsegment(l - 1);
-    for(std::size_t i = 0; i < l-1; i++){
+    for(std::size_t i = 0; i < l - 1; i++) {
       qtrn one = segment[i];
-      qtrn two = segment[i+1];
+      qtrn two = segment[i + 1];
       newsegment[i] = one.slerp(t, two);
     }
     segment = newsegment;
@@ -38,17 +71,42 @@ std::vector<qtrn> _reduce_de_casteljau(std::vector<qtrn> segment, double t){
   return segment;
 }
 
-//   while(length(segment) > 2L){
-//     newsegment <- quaternion(length.out = length(segment) - 1L)
-//     for(i in seq_len(length(segment)-1L)){
-//       one <- segment[i]
-//       two <- segment[i+1L]
-//       newsegment[i] <- .slerp(one, two, t)
-//     }
-//     segment <- newsegment
-//   }
-//   segment
-// }
+qtrn _eval_casteljau_single(double t,
+                            std::vector<std::vector<qtrn>> segments,
+                            Rcpp::NumericVector keyTimes) {
+  double time, difftime;  // difftime not used here
+  std::vector<qtrn> segment =
+      _select_segment_and_normalize_t(segments, keyTimes, t, &time, &difftime);
+  std::vector<qtrn> quats = _reduce_de_casteljau(segment, time);
+  return quats[0].slerp(time, quats[1]);
+}
+
+std::vector<qtrn> _eval_casteljau_vector(
+    Rcpp::NumericVector times,
+    std::vector<std::vector<qtrn>> segments,
+    Rcpp::NumericVector keyTimes) {
+  std::size_t n = times.size();
+  std::vector<qtrn> quats(n);
+  for(std::size_t i = 0; i < n; i++) {
+    quats[i] = _eval_casteljau_single(times(i), segments, keyTimes);
+  }
+  return quats;
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericMatrix DeCasteljau_cpp(
+  Rcpp::List rsegments, Rcpp::NumericVector keyTimes, Rcpp::NumericVector times
+){
+  size_t nsegments = rsegments.size();
+  if(keyTimes == R_NilValue){
+    keyTimes = _seq_len(nsegments + 1);
+  }else if(keyTimes.size() != nsegments + 1){
+    Rcpp::stop("Number of key times must be one more than number of segments.");
+  }
+  std::vector<std::vector<qtrn>> segments = _getRSegments(rsegments);
+  std::vector<qtrn> quats = _eval_casteljau_vector(times, segments, keyTimes);
+  return _getCQuaternions(quats);
+}
 
 // {}
 // // [[Rcpp::export]]
