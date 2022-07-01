@@ -185,6 +185,89 @@ qtrn _natural_control_quaternion(qtrn outer, qtrn inner_control, qtrn inner){
   return qpower(inner_control * outer.inverse(), 1/2) * outer;
 }
 
+
+Rcpp::NumericMatrix KochanekBartels_cpp(
+  std::vector<qtrn> keyRotors, Rcpp::NumericVector keyTimes, double t, double c, 
+  double b, std::vector<double> times, std::size_t nintertimes, bool closed
+){
+  keyRotors = _check_keyRotors(keyRotors, closed);
+  const std::size_t nkeyRotors = keyRotors.size();
+  const std::size_t nkeyTimes = keyTimes.size();
+  if(nkeyTimes == 0 && nintertimes > 0){
+    times = _seqvec(1.0, nkeyRotors, nintertimes * (nkeyRotors - 1) + 1);
+    if(closed){
+      times.erase(times.end() - 1);
+    }
+  }
+  keyTimes = _check_keyTimes(keyTimes, nkeyRotors);
+  std::vector<double> kTimes(keyTimes.begin(), keyTimes.end());
+  std::vector<std::array<double, 3>> triplets_times = 
+    makeTriplets_times(kTimes, closed);
+  std::vector<std::array<qtrn, 3>> triplets_rotors = 
+    makeTriplets_rotors(keyRotors, closed);
+  
+  std::vector<qtrn> control_points(0);
+  for(std::size_t i = 0; i < nkeyRotors-2; i++){ 
+    std::array<qtrn, 3> qs = triplets_rotors[i];
+    std::array<qtrn, 2> qb_qa = _calculate_control_quaternions(
+      qs, triplets_times[i], t, c, b
+    );
+    qtrn q_before = qb_qa[0];
+    qtrn q_after  = qb_qa[1];
+    control_points.push_back(q_before);
+    control_points.push_back(qs[1]);
+    control_points.push_back(qs[1]);
+    control_points.push_back(q_after);
+  }
+  const std::size_t ncontrol_points = control_points.size();
+  
+  if(closed){
+    // stopifnot(4*length(keyTimes) == n_control_points)
+    control_points.pop_back();
+    control_points.pop_back();
+    control_points.erase(control_points.begin());
+    control_points.erase(control_points.begin());
+  }else if(ncontrol_points == 0){
+    // two quaternions -> slerp
+    //stopifnot(n_keyRotors == 2L)
+    //stopifnot(length(keyTimes) == 2L)
+    qtrn q0 = keyRotors[0];
+    qtrn q1 = keyRotors[1];
+    qtrn offset = qpower(q1 * q0.inverse(), 1/3);
+    control_points.push_back(q0);
+    control_points.push_back(offset * q0);
+    control_points.push_back(offset.inverse() * q1);
+    control_points.push_back(q1);
+  }else{ // natural
+    qtrn ncq1 = _natural_control_quaternion(
+      keyRotors[0], control_points[0], control_points[1]
+    );
+    qtrn ncq2 = _natural_control_quaternion(
+      keyRotors[nkeyRotors-1], control_points[ncontrol_points-1], 
+      control_points[ncontrol_points-2]
+    );
+    control_points.push_back(ncq2);
+    control_points.push_back(keyRotors[nkeyRotors-1]);
+    control_points.insert(control_points.begin(), ncq1);
+    control_points.insert(control_points.begin(), keyRotors[0]);
+  }
+
+  const Rcpp::IntegerVector indices = 
+    4 * Rcpp::seq_len(control_points.size() / 4) - 4;
+  const std::size_t nsegments = indices.size();
+  Rcpp::List Segments(nsegments);
+  for(size_t i = 0; i < nsegments; i++) {
+    const int j = indices(i);
+    const std::vector<qtrn> segment = {
+      control_points[j], control_points[j+1], 
+      control_points[j+2], control_points[j+3]
+    };
+    Segments(i) = _getCQuaternions(segment);
+  }
+  Rcpp::NumericVector Rtimes(times.begin(), times.end());
+  
+  return DeCasteljau_cpp(Segments, keyTimes, Rtimes);
+}
 // {} []
 // // [[Rcpp::export]]
 

@@ -21,5 +21,6 @@ qtrn qpower(qtrn, double);
 std::vector<double> _seqvec(double, double, std::size_t);
 
 Rcpp::NumericVector _check_keyTimes(Rcpp::NumericVector, std::size_t);
+std::vector<qtrn> _check_keyRotors(std::vector<qtrn>, bool);
 
 #endif
