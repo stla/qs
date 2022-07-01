@@ -24,9 +24,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rversor_cpp
+Rcpp::NumericMatrix rversor_cpp(std::size_t n);
+RcppExport SEXP _qs_rversor_cpp(SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::size_t >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(rversor_cpp(n));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_qs_DeCasteljau_cpp", (DL_FUNC) &_qs_DeCasteljau_cpp, 3},
+    {"_qs_rversor_cpp", (DL_FUNC) &_qs_rversor_cpp, 1},
     {NULL, NULL, 0}
 };
 

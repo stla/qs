@@ -29,7 +29,7 @@ std::vector<qtrn> _check_keyRotors(std::vector<qtrn> keyRotors, bool closed) {
 Rcpp::NumericVector _seq_len(std::size_t n) {
   Rcpp::NumericVector seq(n);
   for(std::size_t i = 1; i <= n; i++) {
-    seq(i) = (double)(i);
+    seq(i-1) = (double)(i);
   }
   return seq;
 }
@@ -37,7 +37,7 @@ Rcpp::NumericVector _seq_len(std::size_t n) {
 Rcpp::NumericVector _check_keyTimes(Rcpp::NumericVector keyTimes,
                                     std::size_t n_quaternions) {
   if(keyTimes == R_NilValue) {
-    return (_seq_len(n_quaternions));
+    return _seq_len(n_quaternions);
   }
   std::size_t n = keyTimes.size();
   for(std::size_t i = 1; i < n; i++) {
@@ -73,7 +73,7 @@ std::size_t _check_time(double t, Rcpp::NumericVector keyTimes, bool special) {
   }
   std::size_t idx;
   if(t < lastKeyTime) {
-    idx = _findInterval(t, keyTimes);
+    idx = _findInterval(t, keyTimes) - 1;
   } else {  // t = lastKeyTime
     if(special) {
       idx = n_keyTimes - 3;  // 2?
@@ -120,6 +120,66 @@ Rcpp::NumericVector _interpolateTimes(Rcpp::NumericVector times,
   }
   return newtimes;
 }
+
+// qtrn slerp(qtrn q0, qtrn q1, double t) {
+//   qtrn q2 = q1 * q0.inverse();
+//   qtrn H1(1.0, 0.0, 0.0, 0.0);
+//   qtrn q2powt = q2.slerp(t, H1);
+//   return q2powt * q0;
+// }
+
+qtrn qpower(qtrn q, double t) {
+  //qtrn H1(1.0, 0.0, 0.0, 0.0);
+  double w = q.w();
+  if(w == 1){
+    return q; // ok because versor assumption => q = H1
+  }
+  double alpha = t*acos(w);
+  double a = sin(alpha)/sqrt(1-w*w);
+  double b = cos(alpha);
+  qtrn qpowt(b, a * q.x(), a * q.y(), a * q.z());
+  return qpowt;
+}
+
+qtrn slerp(qtrn q0, qtrn q1, double t) {
+  qtrn q2 = q1 * q0.inverse();
+  qtrn q2powt = qpower(q2, t);
+  return q2powt * q0;
+}
+
+// // [[Rcpp::export]]  c(v*sin(t*acos(w))/sqrt(1-w*w), cos(t*acos(w))) 
+// Rcpp::NumericMatrix	slerp_(const Rcpp::NumericVector & q1, 
+//                            const Rcpp::NumericVector & q2, 
+//                            const Rcpp::NumericVector & t)
+// {
+//   if(q1.size() != 4 || q2.size() != 4){
+//     throw Rcpp::exception("q1 and q2 must be quaternions");
+//   }
+//   Eigen::Quaterniond qa(q1[0], q1[1], q1[2], q1[3]);
+//   Eigen::Quaterniond qb(q2[0], q2[1], q2[2], q2[3]);
+//   Rcpp::NumericMatrix out(t.size(), 4);
+//   for(unsigned i=0; i<t.size(); i++){
+//     Eigen::Quaterniond q = qa.slerp(t[i], qb);
+//     out(i,0) = q.w();
+//     out(i,1) = q.x();
+//     out(i,2) = q.y();
+//     out(i,3) = q.z();
+//   }
+//   return out;
+// }
+
+// [[Rcpp::export]]
+Rcpp::NumericMatrix rversor_cpp(std::size_t n){
+  Rcpp::NumericMatrix out(4, n);
+  for(std::size_t i = 0; i < n; i++){
+    qtrn q = qtrn::UnitRandom();
+    out(0, i) = q.w();
+    out(1, i) = q.x();
+    out(2, i) = q.y();
+    out(3, i) = q.z();
+  }
+  return out;
+}  
 
 //   newtimes
 // }

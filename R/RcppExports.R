@@ -5,3 +5,7 @@ DeCasteljau_cpp <- function(rsegments, keyTimes, times) {
     .Call(`_qs_DeCasteljau_cpp`, rsegments, keyTimes, times)
 }
 
+rversor_cpp <- function(n) {
+    .Call(`_qs_rversor_cpp`, n)
+}
+

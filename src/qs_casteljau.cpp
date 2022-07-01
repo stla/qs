@@ -7,6 +7,7 @@ std::vector<qtrn> _select_segment_and_normalize_t(
     double* time,
     double* difftime) {
   const std::size_t idx = _check_time(t, keyTimes, false);
+  Rcpp::Rcout << "idx: " << idx;
   const double t0 = keyTimes[idx];
   const double t1 = keyTimes[idx + 1];
   const double delta_t = t1 - t0;
@@ -63,7 +64,7 @@ std::vector<qtrn> _reduce_de_casteljau(std::vector<qtrn> segment, double t) {
     for(std::size_t i = 0; i < l - 1; i++) {
       qtrn one = segment[i];
       qtrn two = segment[i + 1];
-      newsegment[i] = one.slerp(t, two);
+      newsegment[i] = slerp(one, two, t);
     }
     segment = newsegment;
     l--;
@@ -78,7 +79,7 @@ qtrn _eval_casteljau_single(double t,
   std::vector<qtrn> segment =
       _select_segment_and_normalize_t(segments, keyTimes, t, &time, &difftime);
   std::vector<qtrn> quats = _reduce_de_casteljau(segment, time);
-  return quats[0].slerp(time, quats[1]);
+  return slerp(quats[0], quats[1], time);
 }
 
 std::vector<qtrn> _eval_casteljau_vector(
