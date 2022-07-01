@@ -110,20 +110,17 @@ Rcpp::NumericMatrix DeCasteljau_cpp(
 }
 
 std::array<qtrn, 2> _calculate_control_quaternions(
-  std::vector<qtrn> quaternions, Rcpp::NumericVector times, 
+  std::array<qtrn, 3> quaternions, double t_1, double t0, double t1,  
   double t, double c, double b
 ){
   qtrn q_1 = quaternions[0];
   qtrn q0  = quaternions[1];
   qtrn q1  = quaternions[2];
-  double t_1 = times[1];
-  double t0  = times[2];
-  double t1  = times[3];
   double A = (1 - t) * (1 + c) * (1 + b);
   double B = (1 - t) * (1 - c) * (1 - b);
   double C = (1 - t) * (1 - c) * (1 + b);
   double D = (1 - t) * (1 + c) * (1 - b);
-  qtrn lq_in  = qlog(q0 * q_1.inverse());
+  qtrn lq_in = qlog(q0 * q_1.inverse());
   qtrn lq_out = qlog(q1 * q0.inverse()); 
   Rcpp::NumericVector v_in = 
     Rcpp::NumericVector::create(0.0, lq_in.x(), lq_in.y(), lq_in.z());
@@ -143,5 +140,60 @@ std::array<qtrn, 2> _calculate_control_quaternions(
 }
 
 
-// {}
+template<typename T>
+std::vector<std::array<T, 3>> makeTriplets(std::vector<T> vec) {
+  const std::size_t n = vec.size();
+  std::vector<std::array<T, 3>> triplets(n-2);
+  for(size_t i = 0; i < n - 2; i ++) {
+    triplets[i] = {vec[i], vec[i+1], vec[i+2]};
+  }
+  return triplets;
+}
+
+std::vector<std::array<double, 3>> makeTriplets_times(std::vector<double> times, bool closed) {
+  if(closed){
+    const std::size_t ntimes = times.size();
+    times.insert(times.begin(), times[0] - (times[ntimes-1] - times[ntimes-2]));
+    times.push_back(times[ntimes-1] + (times[1] - times[0]));
+  }
+  return makeTriplets<double>(times);
+}
+
+std::vector<std::array<qtrn, 3>> makeTriplets_rotors(std::vector<qtrn> rotors, bool closed) {
+  if(closed){
+    const std::size_t nrotors = rotors.size();
+    qtrn prefix = rotors[nrotors - 2];
+    if(prefix.dot(rotors[0]) < 0.0){
+      prefix.w() = -prefix.w();
+      prefix.vec() = -prefix.vec();
+    }
+    qtrn suffix = rotors[1];
+    if(suffix.dot(rotors[nrotors-1]) < 0.0){
+      suffix.w() = -suffix.w();
+      suffix.vec() = -suffix.vec();
+    }
+    rotors.insert(rotors.begin(), prefix);
+    rotors.push_back(suffix);
+  }
+  return makeTriplets<qtrn>(rotors);
+}
+
+// {} []
+// // [[Rcpp::export]]
+
+
+// // [[Rcpp::export]]
+// void test(){
+//   qtrn q1(1.0/sqrt(2),1.0/sqrt(2), 0.0, 0.0);
+//   qtrn q2(0.0, 0.0, 0.0, 1.0);
+//   qtrn q3(0.5, 0.5, 0.5, 0.5);
+//   std::vector<qtrn> quats = {q1, q2, q3};
+//   std::array<qtrn, 2> arr = _calculate_control_quaternions(quats, 0.2, 0.4, 0.6, 0.1, 0.1, 0.1);
+//   qtrn qq1 = arr[0];
+//   qtrn qq2 = arr[1];
+//   Rcpp::Rcout << qq1.w() << " " << qq1.x() << " " << qq1.y() << " " << qq1.z() << " --- ";
+//   Rcpp::Rcout << qq2.w() << " " << qq2.x() << " " << qq2.y() << " " << qq2.z() << " --- ";
+// }
+
+// {} []
 // // [[Rcpp::export]]
