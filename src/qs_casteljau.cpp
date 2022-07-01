@@ -185,7 +185,7 @@ qtrn _natural_control_quaternion(qtrn outer, qtrn inner_control, qtrn inner){
   return qpower(inner_control * outer.inverse(), 1/2) * outer;
 }
 
-
+// [[Rcpp::export]]
 Rcpp::NumericMatrix KochanekBartels_cpp(
   Rcpp::NumericMatrix keyRotorsR, Rcpp::NumericVector keyTimes, double t, double c, 
   double b, Rcpp::NumericVector timesR, std::size_t nintertimes, bool closed
@@ -209,7 +209,8 @@ Rcpp::NumericMatrix KochanekBartels_cpp(
     makeTriplets_rotors(keyRotors, closed);
   
   std::vector<qtrn> control_points(0);
-  for(std::size_t i = 0; i < nkeyRotors-2; i++){ 
+  const std::size_t MMM = triplets_rotors.size(); // nkeyRotors-2 ?
+  for(std::size_t i = 0; i < MMM; i++){ 
     std::array<qtrn, 3> qs = triplets_rotors[i];
     std::array<qtrn, 2> qb_qa = _calculate_control_quaternions(
       qs, triplets_times[i], t, c, b

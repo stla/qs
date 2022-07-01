@@ -5,6 +5,10 @@ DeCasteljau_cpp <- function(rsegments, keyTimes, times) {
     .Call(`_qs_DeCasteljau_cpp`, rsegments, keyTimes, times)
 }
 
+KochanekBartels_cpp <- function(keyRotorsR, keyTimes, t, c, b, timesR, nintertimes, closed) {
+    .Call(`_qs_KochanekBartels_cpp`, keyRotorsR, keyTimes, t, c, b, timesR, nintertimes, closed)
+}
+
 rversor_cpp <- function(n) {
     .Call(`_qs_rversor_cpp`, n)
 }
