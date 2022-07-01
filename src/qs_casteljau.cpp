@@ -187,9 +187,11 @@ qtrn _natural_control_quaternion(qtrn outer, qtrn inner_control, qtrn inner){
 
 
 Rcpp::NumericMatrix KochanekBartels_cpp(
-  std::vector<qtrn> keyRotors, Rcpp::NumericVector keyTimes, double t, double c, 
-  double b, std::vector<double> times, std::size_t nintertimes, bool closed
+  Rcpp::NumericMatrix keyRotorsR, Rcpp::NumericVector keyTimes, double t, double c, 
+  double b, Rcpp::NumericVector timesR, std::size_t nintertimes, bool closed
 ){
+  std::vector<qtrn> keyRotors = _getRQuaternions(keyRotorsR);
+  std::vector<double> times(timesR.begin(), timesR.end());
   keyRotors = _check_keyRotors(keyRotors, closed);
   const std::size_t nkeyRotors = keyRotors.size();
   const std::size_t nkeyTimes = keyTimes.size();
