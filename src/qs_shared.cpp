@@ -36,11 +36,11 @@ Rcpp::NumericVector _seq_len(std::size_t n) {
 
 Rcpp::NumericVector _check_keyTimes(Rcpp::NumericVector keyTimes,
                                     std::size_t n_quaternions) {
-  if(keyTimes == R_NilValue) {
+  std::size_t nkeyTimes = keyTimes.size();
+  if(nkeyTimes == 0) {
     return _seq_len(n_quaternions);
   }
-  std::size_t n = keyTimes.size();
-  for(std::size_t i = 1; i < n; i++) {
+  for(std::size_t i = 1; i < nkeyTimes; i++) {
     if(keyTimes(i) - keyTimes(i - 1) <= 0) {
       Rcpp::stop("`keyTimes` must be an increasing vector of numbers.");
     }

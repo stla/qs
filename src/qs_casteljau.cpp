@@ -7,7 +7,6 @@ std::vector<qtrn> _select_segment_and_normalize_t(
     double* time,
     double* difftime) {
   const std::size_t idx = _check_time(t, keyTimes, false);
-  Rcpp::Rcout << "idx: " << idx;
   const double t0 = keyTimes[idx];
   const double t1 = keyTimes[idx + 1];
   const double delta_t = t1 - t0;
@@ -98,10 +97,11 @@ std::vector<qtrn> _eval_casteljau_vector(
 Rcpp::NumericMatrix DeCasteljau_cpp(
   Rcpp::List rsegments, Rcpp::NumericVector keyTimes, Rcpp::NumericVector times
 ){
-  size_t nsegments = rsegments.size();
-  if(keyTimes == R_NilValue){
+  std::size_t nsegments = rsegments.size();
+  std::size_t nkeyTimes = keyTimes.size();
+  if(nkeyTimes == 0){
     keyTimes = _seq_len(nsegments + 1);
-  }else if(keyTimes.size() != nsegments + 1){
+  }else if(nkeyTimes != nsegments + 1){
     Rcpp::stop("Number of key times must be one more than number of segments.");
   }
   std::vector<std::vector<qtrn>> segments = _getRSegments(rsegments);
