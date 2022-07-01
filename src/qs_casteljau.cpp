@@ -110,12 +110,15 @@ Rcpp::NumericMatrix DeCasteljau_cpp(
 }
 
 std::array<qtrn, 2> _calculate_control_quaternions(
-  std::array<qtrn, 3> quaternions, double t_1, double t0, double t1,  
+  std::array<qtrn, 3> quaternions, std::array<double, 3> times, 
   double t, double c, double b
 ){
   qtrn q_1 = quaternions[0];
   qtrn q0  = quaternions[1];
   qtrn q1  = quaternions[2];
+  double t_1 = times[0];
+  double t0  = times[1];
+  double t1  = times[2];
   double A = (1 - t) * (1 + c) * (1 + b);
   double B = (1 - t) * (1 - c) * (1 - b);
   double C = (1 - t) * (1 - c) * (1 + b);
@@ -176,6 +179,10 @@ std::vector<std::array<qtrn, 3>> makeTriplets_rotors(std::vector<qtrn> rotors, b
     rotors.push_back(suffix);
   }
   return makeTriplets<qtrn>(rotors);
+}
+
+qtrn _natural_control_quaternion(qtrn outer, qtrn inner_control, qtrn inner){
+  return qpower(inner_control * outer.inverse(), 1/2) * outer;
 }
 
 // {} []

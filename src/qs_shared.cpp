@@ -100,6 +100,17 @@ Rcpp::NumericVector _seq(double a, double b, std::size_t l) {
   return out;
 }
 
+std::vector<double> _seqvec(double a, double b, std::size_t l) {
+  std::vector<double> out(l);
+  const double delta = (b - a) / ((double)(l - 1));
+  double current = a;
+  for(size_t i = 0; i < l; i++) {
+    out[i] = current;
+    current += delta;
+  }
+  return out;
+}
+
 Rcpp::NumericVector _interpolateTimes(Rcpp::NumericVector times,
                                       std::size_t n,
                                       bool last) {
