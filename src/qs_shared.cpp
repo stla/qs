@@ -181,7 +181,41 @@ Rcpp::NumericMatrix rversor_cpp(std::size_t n){
   return out;
 }  
 
-//   newtimes
-// }
+qtrn qexp(qtrn q){
+  double t = q.w();
+  qtrn V(0.0, q.x(), q.y(), q.z());
+  double mV = V.norm(); // !! dans onion, la norme est le carré du module !!
+  if(mV == 0.0){
+    qtrn out(exp(t), 0.0, 0.0, 0.0);
+    return out;
+  }
+  double expt = exp(t);
+  double b = expt * sin(mV) / mV;
+  qtrn out(expt * cos(mV), b * q.x(), b * q.y(), b * q.z());
+  return out;
+}
+
+qtrn qlog(qtrn q){
+  double t = q.w();
+  qtrn V(0.0, q.x(), q.y(), q.z());
+  double mV = V.norm(); // !! dans onion, la norme est le carré du module !!
+  double wout = log(q.squaredNorm())/2.0;
+  if(mV == 0.0){
+    qtrn out(wout, 0.0, 0.0, 0.0);
+    return out;
+  }
+  double b = atan2(mV, t)/mV;
+  qtrn out(wout, b * q.x(), b * q.y(), b * q.z());
+  return out;
+}
 
 // {}
+    // t <- Re(x)
+    // V <- Im(x)
+    // mV <- Mod(V)
+    // out <- log(Norm(x))/2 + V * atan2(mV, t)/mV
+    // i <- mV == 0 | is.na(mV)
+    // Re(out[i]) <- log(Norm(x[i]))/2
+    // Im(out[i]) <- 0
+    // return(out/log(base))
+ 

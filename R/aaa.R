@@ -6,7 +6,7 @@ NULL
 
 #' Title
 #'
-#' @param n 
+#' @param n x
 #'
 #' @return x
 #' @export

@@ -14,4 +14,7 @@ Rcpp::NumericVector _seq_len(std::size_t);
 
 qtrn slerp(qtrn, qtrn, double);
 
+qtrn qexp(qtrn);
+qtrn qlog(qtrn);
+
 #endif

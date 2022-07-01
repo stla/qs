@@ -7,7 +7,7 @@
 rversor(n)
 }
 \arguments{
-\item{n}{}
+\item{n}{x}
 }
 \value{
 x

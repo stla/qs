@@ -109,5 +109,39 @@ Rcpp::NumericMatrix DeCasteljau_cpp(
   return _getCQuaternions(quats);
 }
 
+std::array<qtrn, 2> _calculate_control_quaternions(
+  std::vector<qtrn> quaternions, Rcpp::NumericVector times, 
+  double t, double c, double b
+){
+  qtrn q_1 = quaternions[0];
+  qtrn q0  = quaternions[1];
+  qtrn q1  = quaternions[2];
+  double t_1 = times[1];
+  double t0  = times[2];
+  double t1  = times[3];
+  double A = (1 - t) * (1 + c) * (1 + b);
+  double B = (1 - t) * (1 - c) * (1 - b);
+  double C = (1 - t) * (1 - c) * (1 + b);
+  double D = (1 - t) * (1 + c) * (1 - b);
+  qtrn lq_in  = qlog(q0 * q_1.inverse());
+  qtrn lq_out = qlog(q1 * q0.inverse()); 
+  Rcpp::NumericVector v_in = 
+    Rcpp::NumericVector::create(0.0, lq_in.x(), lq_in.y(), lq_in.z());
+  Rcpp::NumericVector v_out = 
+    Rcpp::NumericVector::create(0.0, lq_out.x(), lq_out.y(), lq_out.z());
+  v_in  = v_in / (t0 - t_1);
+  v_out = v_out / (t1 - t0);
+  Rcpp::NumericVector v0CD = 
+    (C * (t1 - t0) * v_in + D * (t0 - t_1) * v_out) / (t1 - t_1);
+  Rcpp::NumericVector v0AB = 
+    (A * (t1 - t0) * v_in + B * (t0 - t_1) * v_out) / (t1 - t_1);
+  std::array<qtrn, 2> out = {
+    qexp(_getRQuaternion((t_1 - t0) * v0CD / 3.0)) * q0,
+    qexp(_getRQuaternion((t1 - t0) * v0AB / 3.0)) * q0
+  };
+  return out;
+}
+
+
 // {}
 // // [[Rcpp::export]]
