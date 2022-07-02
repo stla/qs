@@ -119,6 +119,9 @@ std::array<qtrn, 2> _calculate_control_quaternions(
   double t_1 = times[0];
   double t0  = times[1];
   double t1  = times[2];
+  if(t_1 == t0 || t0 == t1){
+    return {q0, q0};
+  }
   double A = (1 - t) * (1 + c) * (1 + b);
   double B = (1 - t) * (1 - c) * (1 - b);
   double C = (1 - t) * (1 - c) * (1 + b);
@@ -182,7 +185,7 @@ std::vector<std::array<qtrn, 3>> makeTriplets_rotors(std::vector<qtrn> rotors, b
 }
 
 qtrn _natural_control_quaternion(qtrn outer, qtrn inner_control, qtrn inner){
-  return qpower(inner_control * outer.inverse(), 1/2) * outer;
+  return qpower((inner_control * inner.inverse()) * (inner * outer.inverse()), 0.5) * outer;
 }
 
 // [[Rcpp::export]]
@@ -198,7 +201,7 @@ Rcpp::NumericMatrix KochanekBartels_cpp(
   if(nkeyTimes == 0 && nintertimes > 0){
     times = _seqvec(1.0, nkeyRotors, nintertimes * (nkeyRotors - 1) + 1);
     if(closed){
-      times.erase(times.end() - 1);
+      times.pop_back();
     }
   }
   keyTimes = _check_keyTimes(keyTimes, nkeyRotors);
@@ -208,8 +211,13 @@ Rcpp::NumericMatrix KochanekBartels_cpp(
   std::vector<std::array<qtrn, 3>> triplets_rotors = 
     makeTriplets_rotors(keyRotors, closed);
   
+  Rcpp::Rcout << "TTTTTTTTTT  " << triplets_times[7][0] << " --- ";
+  Rcpp::Rcout << "TTTTTTTTTT  " << triplets_times[7][1] << " --- ";
+  Rcpp::Rcout << "TTTTTTTTTT  " << triplets_times[7][2] << " --- ";
+
   std::vector<qtrn> control_points(0);
   const std::size_t MMM = triplets_rotors.size(); // nkeyRotors-2 ?
+  Rcpp::Rcout << "MMMMMMMMMMMMMMM " << MMM << "  " << triplets_times.size();
   for(std::size_t i = 0; i < MMM; i++){ 
     std::array<qtrn, 3> qs = triplets_rotors[i];
     std::array<qtrn, 2> qb_qa = _calculate_control_quaternions(
@@ -217,6 +225,9 @@ Rcpp::NumericMatrix KochanekBartels_cpp(
     );
     qtrn q_before = qb_qa[0];
     qtrn q_after  = qb_qa[1];
+    Rcpp::Rcout << "UUUUUUUUUUU  " << q_before.norm() << " --- ";
+    Rcpp::Rcout << "UUUUUUUUUUU  " << qs[1].norm() << " --- ";
+    Rcpp::Rcout << "UUUUUUUUUUU  " << q_after.norm() << " --- ";
     control_points.push_back(q_before);
     control_points.push_back(qs[1]);
     control_points.push_back(qs[1]);
@@ -226,6 +237,7 @@ Rcpp::NumericMatrix KochanekBartels_cpp(
   
   if(closed){
     // stopifnot(4*length(keyTimes) == n_control_points)
+    Rcpp::Rcout << "XXXXXXXXXXXX" << ncontrol_points << " --- ";
     control_points.pop_back();
     control_points.pop_back();
     control_points.erase(control_points.begin());
@@ -236,7 +248,7 @@ Rcpp::NumericMatrix KochanekBartels_cpp(
     //stopifnot(length(keyTimes) == 2L)
     qtrn q0 = keyRotors[0];
     qtrn q1 = keyRotors[1];
-    qtrn offset = qpower(q1 * q0.inverse(), 1/3);
+    qtrn offset = qpower(q1 * q0.inverse(), 1.0/3.0);
     control_points.push_back(q0);
     control_points.push_back(offset * q0);
     control_points.push_back(offset.inverse() * q1);
@@ -261,6 +273,7 @@ Rcpp::NumericMatrix KochanekBartels_cpp(
   Rcpp::List Segments(nsegments);
   for(size_t i = 0; i < nsegments; i++) {
     const int j = indices(i);
+        Rcpp::Rcout << "YYYYYXXXXXXXXXXXX" << control_points[j+3].norm() << " --- ";
     const std::vector<qtrn> segment = {
       control_points[j], control_points[j+1], 
       control_points[j+2], control_points[j+3]
@@ -269,6 +282,7 @@ Rcpp::NumericMatrix KochanekBartels_cpp(
   }
   Rcpp::NumericVector Rtimes(times.begin(), times.end());
   
+  //keyTimes = Rcpp::NumericVector(0);
   return DeCasteljau_cpp(Segments, keyTimes, Rtimes);
 }
 // {} []

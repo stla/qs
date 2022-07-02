@@ -4,11 +4,14 @@ std::vector<qtrn> _canonicalized(std::vector<qtrn> quaternions) {
   const std::size_t n = quaternions.size();
   std::vector<qtrn> out(n);
   qtrn p(1.0, 0.0, 0.0, 0.0);
+  qtrn zero(0.0, 0.0, 0.0, 0.0);
   for(std::size_t i = 0; i < n; i++) {
     qtrn q = quaternions[i];
     if(p.dot(q) < 0.0) {
-      q.w() = -q.w();
-      q.vec() = -q.vec();
+      qtrn xx(-q.w(), -q.x(), -q.y(), -q.z());
+      q = xx;
+      // q.w() = -q.w();
+      // q.vec() = -q.vec();
     }
     out[i] = q;
     p = q;
@@ -139,24 +142,19 @@ Rcpp::NumericVector _interpolateTimes(Rcpp::NumericVector times,
 //   return q2powt * q0;
 // }
 
-qtrn qpower(qtrn q, double t) {
-  //qtrn H1(1.0, 0.0, 0.0, 0.0);
-  double w = q.w();
-  if(w == 1){
-    return q; // ok because versor assumption => q = H1
-  }
-  double alpha = t*acos(w);
-  double a = sin(alpha)/sqrt(1-w*w);
-  double b = cos(alpha);
-  qtrn qpowt(b, a * q.x(), a * q.y(), a * q.z());
-  return qpowt;
-}
+// qtrn qpower(qtrn q, double t) {
+//   //qtrn H1(1.0, 0.0, 0.0, 0.0);
+//   double w = q.w();
+//   if(w == 1){
+//     return q; // ok because versor assumption => q = H1
+//   }
+//   double alpha = t*acos(w);
+//   double a = sin(alpha)/sqrt(1-w*w);
+//   double b = cos(alpha);
+//   qtrn qpowt(b, a * q.x(), a * q.y(), a * q.z());
+//   return qpowt;
+// }
 
-qtrn slerp(qtrn q0, qtrn q1, double t) {
-  qtrn q2 = q1 * q0.inverse();
-  qtrn q2powt = qpower(q2, t);
-  return q2powt * q0;
-}
 
 // // [[Rcpp::export]]  c(v*sin(t*acos(w))/sqrt(1-w*w), cos(t*acos(w))) 
 // Rcpp::NumericMatrix	slerp_(const Rcpp::NumericVector & q1, 
@@ -194,30 +192,51 @@ Rcpp::NumericMatrix rversor_cpp(std::size_t n){
 
 qtrn qexp(qtrn q){
   double t = q.w();
+  double expt = exp(t);
   qtrn V(0.0, q.x(), q.y(), q.z());
   double mV = V.norm(); // !! dans onion, la norme est le carré du module !!
-  if(mV == 0.0){
-    qtrn out(exp(t), 0.0, 0.0, 0.0);
+  if(mV == 0.0 || std::isnan(mV) || std::isinf(mV)){
+    qtrn out(expt, 0.0, 0.0, 0.0);
     return out;
   }
-  double expt = exp(t);
   double b = expt * sin(mV) / mV;
   qtrn out(expt * cos(mV), b * q.x(), b * q.y(), b * q.z());
   return out;
 }
+
+// double myatan2(double y, double x){
+//   return 2.0 * atan(y / (sqrt(x*x + y*y) +x));
+// }
 
 qtrn qlog(qtrn q){
   double t = q.w();
   qtrn V(0.0, q.x(), q.y(), q.z());
   double mV = V.norm(); // !! dans onion, la norme est le carré du module !!
   double wout = log(q.squaredNorm())/2.0;
-  if(mV == 0.0){
+  if(mV == 0.0 || std::isnan(mV)){
     qtrn out(wout, 0.0, 0.0, 0.0);
     return out;
   }
   double b = atan2(mV, t)/mV;
   qtrn out(wout, b * q.x(), b * q.y(), b * q.z());
   return out;
+}
+
+qtrn qpower(qtrn q, double t) {
+  //qtrn H1(1.0, 0.0, 0.0, 0.0);
+  double w = q.w();
+  // if(w == 1){
+  //   return q; // ok because versor assumption => q = H1
+  // }
+  qtrn logq = qlog(q);
+  qtrn tlogq(t * logq.w(), t * logq.x(), t * logq.y(), t * logq.z());
+  return qexp(tlogq);
+}
+
+qtrn slerp(qtrn q0, qtrn q1, double t) {
+  qtrn q2 = q1 * q0.inverse();
+  qtrn q2powt = qpower(q2, t);
+  return q2powt * q0;
 }
 
 // {}

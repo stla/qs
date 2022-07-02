@@ -3,6 +3,7 @@
 
 #include <RcppEigen.h>
 #include <Eigen/Geometry> 
+// #include "quaternion.h"
 
 typedef Eigen::Quaterniond qtrn;
 
